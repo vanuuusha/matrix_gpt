@@ -57,9 +57,9 @@ async function main() {
     return;
   }
 
-  const clientOptions = {  // (Optional) Parameters as described in https://platform.openai.com/docs/api-reference/completions
+  const clientOptions1 = {  // (Optional) Parameters as described in https://platform.openai.com/docs/api-reference/completions
     modelOptions: {
-      model: CHATGPT_API_MODEL,  // The model is set to gpt-3.5-turbo by default
+      model: CHATGPT_API_MODEL_1,  // The model is set to gpt-3.5-turbo by default
       temperature: CHATGPT_TEMPERATURE,
     },
     promptPrefix: wrapPrompt(CHATGPT_PROMPT_PREFIX),
@@ -68,7 +68,19 @@ async function main() {
     reverseProxyUrl: CHATGPT_REVERSE_PROXY,
   };
 
-  const chatgpt = new ChatGPTClient(OPENAI_API_KEY, clientOptions, cacheOptions);
+  const clientOptions2 = {
+    modelOptions: {
+      model: CHATGPT_API_MODEL_2,  // The model is set to gpt-3.5-turbo by default
+      temperature: CHATGPT_TEMPERATURE,
+    },
+    promptPrefix: wrapPrompt(CHATGPT_PROMPT_PREFIX),
+    debug: false,
+    azure: OPENAI_AZURE,
+    reverseProxyUrl: CHATGPT_REVERSE_PROXY
+  }
+
+  const chatgpt1 = new ChatGPTClient(OPENAI_API_KEY, clientOptions1, cacheOptions);
+  const chatgpt2 = new ChatGPTClient(OPENAI_API_KEY, clientOptions2, cacheOptions)
 
   // Automatically join rooms the bot is invited to
   if (MATRIX_AUTOJOIN) AutojoinRoomsMixin.setupOnClient(client);
@@ -90,7 +102,7 @@ async function main() {
   });
 
   // Prepare the command handler
-  const commands = new CommandHandler(client, chatgpt);
+  const commands = new CommandHandler(client, chatgpt1, chatgpt2);
   await commands.start();
 
   LogService.info("index", `Starting bot using ChatGPT model: ${CHATGPT_API_MODEL}`);

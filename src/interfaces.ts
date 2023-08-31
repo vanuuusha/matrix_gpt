@@ -70,6 +70,7 @@ export type MembershipType = 'leave' | 'invite' | 'join'
 
 export type StoredConversationConfig = {
   MATRIX_PREFIX?: string;
+  model?: string;
   MATRIX_PREFIX_REPLY?: boolean;
 }
 

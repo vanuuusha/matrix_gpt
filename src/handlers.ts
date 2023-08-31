@@ -1,4 +1,4 @@
-import ChatGPTClient from '@waylaidwanderer/chatgpt-api';
+import ChatGPTClient from '@waylaidwanderer/chatgpt-api';MessageEvent
 import { LogService, MatrixClient, UserID } from "matrix-bot-sdk";
 import { CHATGPT_CONTEXT, CHATGPT_TIMEOUT, CHATGPT_IGNORE_MEDIA, MATRIX_DEFAULT_PREFIX_REPLY, MATRIX_DEFAULT_PREFIX, MATRIX_BLACKLIST, MATRIX_WHITELIST, MATRIX_RICH_TEXT, MATRIX_PREFIX_DM, MATRIX_THREADS, MATRIX_ROOM_BLACKLIST, MATRIX_ROOM_WHITELIST } from "./env.js";
 import { RelatesTo, MessageEvent, StoredConversation, StoredConversationConfig } from "./interfaces.js";
@@ -11,7 +11,7 @@ export default class CommandHandler {
   private userId: string;
   private localpart: string;
 
-  constructor(private client: MatrixClient, private chatGPT: ChatGPTClient) { }
+  constructor(private client: MatrixClient, private chatGPT1: ChatGPTClient, private chatGPT2: ChatGPTClient) { }
 
   public async start() {
     await this.prepareProfile();  // Populate the variables above (async)
@@ -122,19 +122,37 @@ export default class CommandHandler {
       if (!bodyWithoutPrefix) {
         await sendError(this.client, "Error with body: " + event.content.body, roomId, event.event_id);
         return;
-      }
+      };
 
-      const result = await sendChatGPTMessage(this.chatGPT, await bodyWithoutPrefix, storedConversation)
+      var result;
+      var model;
+      if (storedConversation != undefined) {
+          model = storedConversation.config.model;
+      }
+      
+      if (event.content.body.trim().startsWith('gpt4') || model == 'gpt4') {
+        model = 'gpt4'
+        var text = await bodyWithoutPrefix;
+        text = text.slice(4,);
+        result = await sendChatGPTMessage(this.chatGPT2, text, storedConversation)
         .catch((error) => {
           LogService.error(`OpenAI-API Error: ${error}`);
           sendError(this.client, `The bot has encountered an error, please contact your administrator (Error code ${error.status || "Unknown"}).`, roomId, event.event_id);
-      });
+        });
+      } else {
+        model = 'gpt3'
+        result = await sendChatGPTMessage(this.chatGPT1, await bodyWithoutPrefix, storedConversation)
+        .catch((error) => {
+          LogService.error(`OpenAI-API Error: ${error}`);
+          sendError(this.client, `The bot has encountered an error, please contact your administrator (Error code ${error.status || "Unknown"}).`, roomId, event.event_id);
+        });
+      }
       await Promise.all([
         this.client.setTyping(roomId, false, 500),
         sendReply(this.client, roomId, this.getRootEventId(event), `${result.response}`, MATRIX_THREADS, MATRIX_RICH_TEXT)
       ]);
 
-      const storedConfig = ((storedConversation !== undefined && storedConversation.config !== undefined) ? storedConversation.config : {})
+      const storedConfig = ((storedConversation !== undefined && storedConversation.config !== undefined) ? storedConversation.config : {model: model})
       const configString: string = JSON.stringify({conversationId: result.conversationId, messageId: result.messageId, config: storedConfig})
       await this.client.storageProvider.storeValue('gpt-' + storageKey, configString);
       if ((storageKey === roomId) && (CHATGPT_CONTEXT === "both")) await this.client.storageProvider.storeValue('gpt-' + event.event_id, configString);
